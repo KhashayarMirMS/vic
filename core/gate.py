@@ -132,9 +132,9 @@ class Gate(BaseModel):
 
         gates: list[Gate] = []
         for path in all_files:
-            name = Path(path).name.replace(".gate", "")
-            logging.info(f"discovered gate {name}")
-            gates.append(cls.from_file(path).register())
+            gate = cls.from_file(path).register()
+            logging.info(f"discovered gate {gate.name}")
+            gates.append(gate)
 
         for gate in gates:
             gate.build()
