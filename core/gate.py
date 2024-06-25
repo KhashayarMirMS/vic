@@ -15,7 +15,7 @@ class Gate(BaseModel):
     inputs: list[str]
     outputs: list[str]
     gates: dict[str, str]
-    wires: dict[str, str]
+    wires: dict[str, str | list[str]]
     _built_gates: dict[str, "Gate"] = {}
 
     __available__: dict[str, "Gate"] = {}
@@ -64,15 +64,19 @@ class Gate(BaseModel):
 
         while True:
             for k, v in current_inputs.items():
-                wire_end = self.wires[k]
+                wire_ends = self.wires[k]
 
-                if wire_end in self.outputs:
-                    outputs_to_go.remove(wire_end)
-                    outputs[wire_end] = v
-                    continue
+                if isinstance(wire_ends, str):
+                    wire_ends = [wire_ends]
 
-                gate_name, input_pin = wire_end.split(".")
-                assigned_inputs[gate_name][input_pin] = v
+                for wire_end in wire_ends:
+                    if wire_end in self.outputs:
+                        outputs_to_go.remove(wire_end)
+                        outputs[wire_end] = v
+                        continue
+
+                    gate_name, input_pin = wire_end.split(".")
+                    assigned_inputs[gate_name][input_pin] = v
 
             if len(outputs_to_go) == 0:
                 break
