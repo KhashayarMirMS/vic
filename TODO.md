@@ -1,0 +1,18 @@
+- [ ] add readme
+- [ ] add flow files (including discovery and a single flow)
+- [ ] buffer
+- [ ] tri_state_buffer
+- [ ] xor
+- [ ] d_latch
+- [ ] sr_latch
+- [ ] gated_s_r_latch
+- [ ] sr_flip_flop
+- [ ] master_slave_s_r_flip_flop
+- [ ] master_slave_j_k_flip_flop
+- [ ] register
+- [ ] adder
+- [ ] ram
+- [ ] disk
+- [ ] clock
+- [ ] cpu
+- [ ] io

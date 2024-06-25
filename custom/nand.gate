@@ -1,0 +1,14 @@
+name: nand
+inputs:
+  - a
+  - b
+outputs:
+  - o
+gates:
+  and: and
+  not: not
+wires:
+  a: and.a
+  b: and.b
+  and.o: not.i
+  not.o: o

@@ -1,0 +1,16 @@
+name: and
+inputs:
+  - a
+  - b
+outputs:
+  - o
+gates:
+  nota: not
+  notb: not
+  nor: nor
+wires:
+  a: nota.i
+  b: notb.i
+  nota.o: nor.a
+  notb.o: nor.b
+  nor.o: o
