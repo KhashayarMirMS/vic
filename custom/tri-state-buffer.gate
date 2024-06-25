@@ -1,4 +1,4 @@
-name: tristatebuffer
+name: tri-state-buffer
 inputs:
   - i
   - e
