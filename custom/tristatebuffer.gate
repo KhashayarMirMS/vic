@@ -1,0 +1,12 @@
+name: tristatebuffer
+inputs:
+  - i
+  - e
+outputs:
+  - o
+gates:
+  and: and
+wires:
+  i: and.a
+  e: and.b
+  and.o: o

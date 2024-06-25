@@ -1,7 +1,7 @@
 - [ ] add readme
 - [ ] add flow files (including discovery and a single flow)
-- [ ] buffer
-- [ ] tri_state_buffer
+- [x] buffer
+- [x] tri_state_buffer
 - [ ] xor
 - [ ] d_latch
 - [ ] sr_latch

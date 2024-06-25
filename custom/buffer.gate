@@ -1,0 +1,8 @@
+name: buffer
+inputs:
+  - i
+outputs:
+  - o
+gates: {}
+wires:
+  i: o
