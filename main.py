@@ -9,21 +9,10 @@ logging.basicConfig(level=logging.INFO)
 
 async def main():
     Gate.discover("./custom/")
-    full_adder = Gate.by_name("32b-full-adder")
+    a = Gate.by_name("3b-and")
 
-    a: list[BIT] = [0 for _ in range(32)]
-    
-    ci = 1
-
-    async def clock_callback():
-        b: list[BIT] = cast(list[BIT], full_adder.readable_output_values.get("s"))
-        await full_adder.get_output(a=a, b=b, ci=ci)
-
-        logging.info(full_adder.readable_output_values)
-
-    clock = Clock.from_file("./clock.yml")
-
-    await clock.run(clock_callback)
+    print(await a.get_output(a=1, b=1, c=0))
+    print(await a.get_output(a=1, b=1, c=1))
 
 
 asyncio.run(main())

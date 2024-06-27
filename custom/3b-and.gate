@@ -1,0 +1,16 @@
+name: 3b-and
+inputs:
+  - a
+  - b
+  - c
+outputs:
+  - o
+gates:
+  and1: and
+  and2: and
+wires:
+  a: and1.a
+  b: and1.b
+  and1.o: and2.a
+  c: and2.b
+  and2.o: o
