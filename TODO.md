@@ -13,6 +13,6 @@
 - [ ] adder
 - [ ] ram
 - [ ] disk
-- [ ] clock
+- [x] clock
 - [ ] cpu
 - [ ] io
