@@ -1,0 +1,32 @@
+name: full-adder
+inputs:
+  - a
+  - b
+  - ci
+outputs:
+  - s
+  - co
+gates:
+  xor1: xor
+  xor2: xor
+  and1: and
+  and2: and
+  or: or
+wires:
+  a:
+    - and1.a
+    - xor1.a
+  b:
+    - and1.b
+    - xor1.b
+  ci:
+    - xor2.b
+    - and2.b
+  xor1.o:
+    - xor2.a
+    - and2.a
+  and1.o: or.a
+  and2.o: or.b
+  xor2.o: s
+  or.o: co
+  
