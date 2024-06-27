@@ -1,0 +1,17 @@
+name: s-r-latch
+inputs:
+  - s
+  - r
+outputs:
+  - q
+  - ~q
+gates:
+  nor1: nor
+  nor2: nor
+wires:
+  r: nor1.a
+  s: nor2.b
+  nor1.o: q
+  nor2.o: ~q
+  q: nor2.a
+  ~q: nor1.b

@@ -2,10 +2,10 @@
 - [ ] add flow files (including discovery and a single flow)
 - [x] buffer
 - [x] tri_state_buffer
-- [ ] xor
-- [ ] d_latch
-- [ ] sr_latch
+- [x] xor
+- [x] sr_latch
 - [ ] gated_s_r_latch
+- [ ] d_latch
 - [ ] sr_flip_flop
 - [ ] master_slave_s_r_flip_flop
 - [ ] master_slave_j_k_flip_flop
