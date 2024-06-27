@@ -1,0 +1,19 @@
+name: 32b-full-adder
+inputs:
+  - a[32]
+  - b[32]
+  - ci
+outputs:
+  - s[32]
+  - co
+gates:
+  adders[32]: full-adder
+wires:
+  (i=0..31):
+    adders[#i].s: s[#i]
+    a[#i]: adders[#i].a
+    b[#i]: adders[#i].b
+  (i=0..30):
+    adders[#i].co: adders[#(i + 1)].ci
+  ci: adders[0].ci
+  adders[31].co: co

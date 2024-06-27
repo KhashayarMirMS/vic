@@ -3,11 +3,28 @@ from collections import defaultdict
 import glob
 import logging
 from pathlib import Path
-from typing import Literal
-from pydantic import BaseModel
+from typing import Any, Literal, cast
+from pydantic import BaseModel, field_validator
 import yaml
+import re
 
 BIT = Literal[0, 1]
+
+array_definition_regex = re.compile("(?P<name>.+)\\[(?P<size>\\d+)\\]")
+range_definition_regex = re.compile(
+    "\\((?P<name>\\w+)=(?P<start>\\d+)\\.\\.(?P<end>\\d+)\\)"
+)
+expression_regex = re.compile("#\\((?P<expression>.*)\\)")
+
+
+def _compile_range_script(script: str, context: dict[str, Any]):
+    for key, value in context.items():
+        script = re.sub(f"#{key}", str(value), script)
+
+    def evaluate_expression(match: re.Match[str]):
+        return str(eval(match.group("expression"), context))
+
+    return re.sub(expression_regex, evaluate_expression, script)
 
 
 class Gate(BaseModel):
@@ -32,13 +49,23 @@ class Gate(BaseModel):
             self._built_gates[gate_name] = (
                 Gate.__available__[gate_type].model_copy().build()
             )
-        
+
         for output_name in self.outputs:
             self._output_values[output_name] = 0
 
         return self
 
-    def _check_inputs(self, inputs: dict[str, BIT]) -> dict[str, BIT]:
+    def _check_inputs(self, raw_inputs: dict[str, BIT | list[BIT]]) -> dict[str, BIT]:
+        inputs = {}
+
+        for key, value in raw_inputs.items():
+            if isinstance(value, int):
+                inputs[key] = value
+                continue
+
+            for i, bit in enumerate(value):
+                inputs[f"{key}[{i}]"] = bit
+
         input_pins_set = set(self.inputs)
         input_keys_set = set(inputs.keys())
 
@@ -56,8 +83,88 @@ class Gate(BaseModel):
 
         return defaultdict(lambda: 0, inputs)
 
-    async def get_output(self, **inputs: BIT):
-        inputs = self._check_inputs(inputs)
+    @field_validator("inputs", "outputs", mode="before")
+    def _parse_inputs_outputs(cls, values: list[str]):
+        parsed_values = []
+        for value in values:
+            array_match = array_definition_regex.match(value)
+
+            if array_match is None:
+                parsed_values.append(value)
+                continue
+
+            name = array_match.group("name")
+            size = int(array_match.group("size"))
+
+            for i in range(size):
+                parsed_values.append(f"{name}[{i}]")
+
+        return parsed_values
+
+    @field_validator("gates", mode="before")
+    def _parse_gates(cls, values: dict[str, str]):
+        parsed_values: dict[str, str] = {}
+        for key, value in values.items():
+            array_match = array_definition_regex.match(key)
+
+            if array_match is None:
+                parsed_values[key] = value
+                continue
+
+            name = array_match.group("name")
+            size = int(array_match.group("size"))
+
+            for i in range(size):
+                parsed_values[f"{name}[{i}]"] = value
+
+        return parsed_values
+
+    @field_validator("wires", mode="before")
+    def _parse_wires(
+        cls, values: dict[str, str | list[str] | dict[str, str | list[str]]]
+    ):
+        parsed_values: dict[str, str | list[str]] = {}
+
+        for key, value in values.items():
+            if isinstance(value, str):
+                parsed_values[key] = value
+                continue
+
+            if isinstance(value, list):
+                parsed_values[key] = value
+                continue
+
+            range_match = range_definition_regex.match(key)
+
+            if range_match is None:
+                raise Exception(f"invalid range definition {key}")
+
+            name = range_match.group("name")
+            start = int(range_match.group("start"))
+            end = int(range_match.group("end"))
+
+            for i in range(start, end + 1):
+                context = {name: i}
+                for inner_key, inner_value in value.items():
+                    compiled_key = _compile_range_script(inner_key, context)
+                    if isinstance(inner_value, str):
+                        compiled_value = _compile_range_script(inner_value, context)
+                        parsed_values[compiled_key] = compiled_value
+                        continue
+
+                    parsed_inner_values = []
+                    for inner_value_item in inner_value:
+                        compiled_value = _compile_range_script(
+                            inner_value_item, context
+                        )
+                        parsed_inner_values.append(compiled_value)
+
+                    parsed_values[compiled_key] = parsed_inner_values
+
+        return parsed_values
+
+    async def get_output(self, **raw_inputs: BIT | list[BIT]):
+        inputs = self._check_inputs(raw_inputs)
 
         outputs_to_go = set(self.outputs)
         outputs: dict[str, BIT] = {}
@@ -110,10 +217,44 @@ class Gate(BaseModel):
         self._output_values = outputs
 
         return outputs
-    
+
     @property
     def output_values(self):
         return self._output_values
+
+    @property
+    def readable_output_values(self):
+        outputs = {}
+        for key, value in self._output_values.items():
+            array_match = array_definition_regex.match(key)
+
+            if array_match is None:
+                outputs[key] = value
+                continue
+
+            formatted_key = array_match.group("name")
+            if formatted_key not in outputs:
+                outputs[formatted_key] = []
+
+            index = int(array_match.group("size"))
+            outputs[formatted_key].append((index, value))
+
+        outputs = cast(dict[str, BIT | list[tuple[int, BIT]]], outputs)
+        formatted_outputs: dict[str, BIT | list[BIT]] = {}
+
+        for key, value in outputs.items():
+            if isinstance(value, int):
+                formatted_outputs[key] = value
+                continue
+
+            size = max([t[0] for t in value]) + 1
+            values_list: list[BIT] = [0 for _ in range(size)]
+            for t in value:
+                values_list[t[0]] = t[1]
+
+            formatted_outputs[key] = values_list
+
+        return formatted_outputs
 
     @classmethod
     def from_file(cls, file_path: str | Path):
@@ -162,8 +303,8 @@ class NotGate(Gate):
         super().__init__(name="not", inputs=["i"], outputs=["o"], gates={}, wires={})
         self.register()
 
-    async def get_output(self, **inputs: BIT):
-        inputs = self._check_inputs(inputs)
+    async def get_output(self, **raw_inputs: BIT | list[BIT]):
+        inputs = self._check_inputs(raw_inputs)
 
         return {"o": 1 - inputs["i"]}
 
@@ -178,8 +319,8 @@ class OrGate(Gate):
         )
         self.register()
 
-    async def get_output(self, **inputs: BIT):
-        inputs = self._check_inputs(inputs)
+    async def get_output(self, **raw_inputs: BIT | list[BIT]):
+        inputs = self._check_inputs(raw_inputs)
 
         return {"o": inputs["a"] | inputs["b"]}
 
