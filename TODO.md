@@ -5,7 +5,7 @@
 - [x] xor
 - [x] sr_latch
 - [x] gated_s_r_latch
-- [ ] d_latch
+- [x] d_latch
 - [ ] sr_flip_flop
 - [ ] master_slave_s_r_flip_flop
 - [ ] master_slave_j_k_flip_flop

@@ -1,0 +1,18 @@
+name: d-latch
+inputs:
+  - d
+  - e
+outputs:
+  - q
+  - ~q
+gates:
+  not: not
+  gated-s-r-latch: gated-s-r-latch
+wires:
+  d:
+    - gated-s-r-latch.s
+    - not.i
+  not.o: gated-s-r-latch.r
+  e: gated-s-r-latch.e
+  gated-s-r-latch.q: q
+  gated-s-r-latch.~q: ~q
