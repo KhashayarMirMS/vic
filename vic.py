@@ -15,6 +15,10 @@ parser.add_argument("name")
 
 args = parser.parse_args()
 
+if '.' in args.name:
+    print("gate name cannot contain '.' as it is a special character")
+    sys.exit(1)
+
 def_path = Path(f"./custom/{args.name}.gate")
 
 if def_path.exists():
