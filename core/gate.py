@@ -17,6 +17,7 @@ class Gate(BaseModel):
     gates: dict[str, str]
     wires: dict[str, str | list[str]]
     _built_gates: dict[str, "Gate"] = {}
+    _output_values: dict[str, BIT] = {}
 
     __available__: dict[str, "Gate"] = {}
 
@@ -31,6 +32,9 @@ class Gate(BaseModel):
             self._built_gates[gate_name] = (
                 Gate.__available__[gate_type].model_copy().build()
             )
+        
+        for output_name in self.outputs:
+            self._output_values[output_name] = 0
 
         return self
 
@@ -58,13 +62,16 @@ class Gate(BaseModel):
         outputs_to_go = set(self.outputs)
         outputs: dict[str, BIT] = {}
 
-        current_inputs = inputs
+        current_inputs: dict[str, BIT] = {**inputs, **self._output_values}
 
         assigned_inputs = defaultdict(dict)
 
         while True:
             for k, v in current_inputs.items():
-                wire_ends = self.wires[k]
+                wire_ends = self.wires.get(k)
+
+                if wire_ends is None:
+                    continue
 
                 if isinstance(wire_ends, str):
                     wire_ends = [wire_ends]
@@ -100,7 +107,13 @@ class Gate(BaseModel):
                 for out_name, out_val in outs[i].items():
                     current_inputs[f"{gate_name}.{out_name}"] = out_val
 
+        self._output_values = outputs
+
         return outputs
+    
+    @property
+    def output_values(self):
+        return self._output_values
 
     @classmethod
     def from_file(cls, file_path: str | Path):
