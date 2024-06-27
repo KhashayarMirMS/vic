@@ -28,7 +28,7 @@ async def main():
 
         i += 1
 
-    clock = Clock.from_file("./clock.yaml")
+    clock = Clock.from_file("./clock.yml")
 
     await clock.run(clock_callback)
 
