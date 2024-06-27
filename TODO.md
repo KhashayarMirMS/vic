@@ -4,7 +4,7 @@
 - [x] tri_state_buffer
 - [x] xor
 - [x] sr_latch
-- [ ] gated_s_r_latch
+- [x] gated_s_r_latch
 - [ ] d_latch
 - [ ] sr_flip_flop
 - [ ] master_slave_s_r_flip_flop

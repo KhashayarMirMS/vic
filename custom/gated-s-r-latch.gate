@@ -1,0 +1,22 @@
+name: gated-s-r-latch
+inputs:
+  - s
+  - r
+  - e
+outputs:
+  - q
+  - ~q
+gates:
+  and1: and
+  and2: and
+  s-r-latch: s-r-latch
+wires:
+  r: and1.a
+  s: and2.b
+  e:
+    - and1.b
+    - and2.a
+  and1.o: s-r-latch.r
+  and2.o: s-r-latch.s
+  s-r-latch.q: q
+  s-r-latch.~q: ~q
