@@ -1,0 +1,23 @@
+name: master-slave-s-r-flip-flop
+inputs:
+  - s
+  - r
+  - clk
+outputs:
+  - q
+  - ~q
+gates:
+  sr1: gated-s-r-latch
+  sr2: gated-s-r-latch
+  clk-not: not
+wires:
+  s: sr1.s
+  r: sr1.r
+  clk:
+    - sr1.e
+    - clk-not.i
+  sr1.q: sr2.s
+  sr1.~q: sr2.r
+  clk-not.o: sr2.e
+  sr2.q: q
+  sr2.~q: ~q
