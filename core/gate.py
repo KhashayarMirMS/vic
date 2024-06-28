@@ -3,8 +3,8 @@ from collections import defaultdict
 import glob
 import logging
 from pathlib import Path
-from typing import Any, Literal, cast
-from pydantic import BaseModel, field_validator
+from typing import Any, Awaitable, Callable, Literal, cast
+from pydantic import BaseModel, PrivateAttr, field_validator
 import yaml
 import re
 
@@ -27,16 +27,76 @@ def _compile_range_script(script: str, context: dict[str, Any]):
     return re.sub(expression_regex, evaluate_expression, script)
 
 
+class Pin:
+    _value: BIT
+    _listeners: list[Callable[[], Awaitable[None]]]
+
+    def __init__(self):
+        self._value = 0
+        self._listeners = []
+
+    @property
+    def value(self):
+        return self._value
+
+    async def set_value(self, new_value: BIT):
+        self._value = new_value
+
+        await asyncio.gather(*[listener() for listener in self._listeners])
+
+    def add_listener(self, listener: Callable[[], Awaitable[None]]):
+        self._listeners.append(listener)
+
+    def remove_listener(self, listener: Callable[[], Awaitable[None]]):
+        self._listeners.remove(listener)
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    def __str__(self) -> str:
+        return str(self._value)
+
+
+class Wire:
+    _input_pin: Pin
+    _output_pin: Pin
+
+    def __init__(self, input_pin: Pin, output_pin: Pin):
+        self._input_pin = input_pin
+        self._output_pin = output_pin
+
+        self._input_pin.add_listener(self.listener)
+
+    async def listener(self):
+        if self._output_pin.value == self._input_pin.value:
+            return
+
+        await self._output_pin.set_value(self._input_pin.value)
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    def __str__(self) -> str:
+        return f"{self._input_pin}--{self._output_pin}"
+
+
 class Gate(BaseModel):
     name: str
     inputs: list[str]
     outputs: list[str]
     gates: dict[str, str]
     wires: dict[str, str | list[str]]
-    _built_gates: dict[str, "Gate"] = {}
-    _output_values: dict[str, BIT] = {}
+    _built_gates: dict[str, "Gate"] = PrivateAttr(default_factory=dict)
+    _input_pins: dict[str, Pin] = PrivateAttr(default_factory=dict)
+    _output_pins: dict[str, Pin] = PrivateAttr(default_factory=dict)
+    _wires: list[Wire] = PrivateAttr(default_factory=list)
 
     __available__: dict[str, "Gate"] = {}
+
+    def __init__(self, /, **data):
+        if data["name"] == "32b-adder":
+            print(data)
+        super().__init__(**data)
 
     def register(self):
         if self.name not in Gate.__available__:
@@ -44,44 +104,53 @@ class Gate(BaseModel):
 
         return self
 
-    def build(self):
+    async def build(self):
+        # if self.name == '32b-full-adder':
+        #     print(self.gates.items())
         for gate_name, gate_type in self.gates.items():
-            self._built_gates[gate_name] = (
-                Gate.__available__[gate_type].model_copy().build()
-            )
+            self._built_gates[gate_name] = await Gate.by_name(gate_type)
+
+        for input_name in self.inputs:
+            self._input_pins[input_name] = Pin()
 
         for output_name in self.outputs:
-            self._output_values[output_name] = 0
+            self._output_pins[output_name] = Pin()
+
+        # if self.name == '32b-full-adder':
+        #     print(self._built_gates.keys())
+        for start_pin_name, end_pin_names in self.wires.items():
+            if isinstance(end_pin_names, str):
+                end_pin_names = [end_pin_names]
+
+            for end_pin_name in end_pin_names:
+                if "." in start_pin_name:
+                    gate_name, pin_name = start_pin_name.split(".")
+                    start_pin = self._built_gates[gate_name].pins[pin_name]
+                else:
+                    start_pin = self.pins[start_pin_name]
+
+                if "." in end_pin_name:
+                    gate_name, pin_name = end_pin_name.split(".")
+                    end_pin = self._built_gates[gate_name].pins[pin_name]
+                else:
+                    end_pin = self.pins[end_pin_name]
+
+                self._wires.append(Wire(start_pin, end_pin))
 
         return self
 
-    def _check_inputs(self, raw_inputs: dict[str, BIT | list[BIT]]) -> dict[str, BIT]:
-        inputs = {}
+    async def post_build(self):
+        # NOTE: using asyncio.gather can cause an infinite loop for gates like s-r-latch
+        for pin in self._input_pins.values():
+            await pin.set_value(1)
+        for pin in self._input_pins.values():
+            await pin.set_value(0)
 
-        for key, value in raw_inputs.items():
-            if isinstance(value, int):
-                inputs[key] = value
-                continue
+        return self
 
-            for i, bit in enumerate(value):
-                inputs[f"{key}[{i}]"] = bit
-
-        input_pins_set = set(self.inputs)
-        input_keys_set = set(inputs.keys())
-
-        extra_keys = input_keys_set - input_pins_set
-
-        if len(extra_keys) > 0:
-            raise Exception(f"unrecognized key(s): {', '.join(extra_keys)}")
-
-        uninitialized_pins = input_pins_set - input_keys_set
-
-        if len(uninitialized_pins) > 0:
-            logging.warning(
-                f"pin(s) <{', '.join(uninitialized_pins)}> are not initialized, defaulting to 0"
-            )
-
-        return defaultdict(lambda: 0, inputs)
+    @property
+    def pins(self):
+        return {**self._input_pins, **self._output_pins}
 
     @field_validator("inputs", "outputs", mode="before")
     def _parse_inputs_outputs(cls, values: list[str]):
@@ -163,69 +232,51 @@ class Gate(BaseModel):
 
         return parsed_values
 
+    def _check_inputs(self, raw_inputs: dict[str, BIT | list[BIT]]) -> dict[str, BIT]:
+        inputs = {}
+
+        for key, value in raw_inputs.items():
+            if isinstance(value, int):
+                inputs[key] = value
+                continue
+
+            for i, bit in enumerate(value):
+                inputs[f"{key}[{i}]"] = bit
+
+        input_pins_set = set(self.inputs)
+        input_keys_set = set(inputs.keys())
+
+        extra_keys = input_keys_set - input_pins_set
+
+        if len(extra_keys) > 0:
+            raise Exception(f"unrecognized key(s): {', '.join(extra_keys)}")
+
+        uninitialized_pins = input_pins_set - input_keys_set
+
+        if len(uninitialized_pins) > 0:
+            logging.warning(
+                f"pin(s) <{', '.join(uninitialized_pins)}> are not initialized, defaulting to 0"
+            )
+
+        return defaultdict(lambda: 0, inputs)
+
     async def get_output(self, **raw_inputs: BIT | list[BIT]):
         inputs = self._check_inputs(raw_inputs)
 
-        outputs_to_go = set(self.outputs)
-        outputs: dict[str, BIT] = {}
+        await asyncio.gather(
+            *[self._input_pins[name].set_value(inputs[name]) for name in self.inputs]
+        )
 
-        current_inputs: dict[str, BIT] = {**inputs, **self._output_values}
-
-        assigned_inputs = defaultdict(dict)
-
-        while True:
-            for k, v in current_inputs.items():
-                wire_ends = self.wires.get(k)
-
-                if wire_ends is None:
-                    continue
-
-                if isinstance(wire_ends, str):
-                    wire_ends = [wire_ends]
-
-                for wire_end in wire_ends:
-                    if wire_end in self.outputs:
-                        outputs_to_go.remove(wire_end)
-                        outputs[wire_end] = v
-                        continue
-
-                    gate_name, input_pin = wire_end.split(".")
-                    assigned_inputs[gate_name][input_pin] = v
-
-            if len(outputs_to_go) == 0:
-                break
-
-            tasks = []
-            gates_to_process = []
-            for gate_name, gate_inputs in assigned_inputs.items():
-                gate = self._built_gates[gate_name]
-                if len(gate.inputs) > len(gate_inputs):
-                    continue
-
-                gates_to_process.append(gate_name)
-                tasks.append(gate.get_output(**gate_inputs))
-
-            outs = await asyncio.gather(*tasks)
-
-            current_inputs = {}
-            for i, gate_name in enumerate(gates_to_process):
-                del assigned_inputs[gate_name]
-
-                for out_name, out_val in outs[i].items():
-                    current_inputs[f"{gate_name}.{out_name}"] = out_val
-
-        self._output_values = outputs
-
-        return outputs
+        return self.output_values
 
     @property
-    def output_values(self):
-        return self._output_values
+    def output_values(self) -> dict[str, BIT]:
+        return {name: pin.value for name, pin in self._output_pins.items()}
 
     @property
     def readable_output_values(self):
         outputs = {}
-        for key, value in self._output_values.items():
+        for key, value in self.output_values.items():
             array_match = array_definition_regex.match(key)
 
             if array_match is None:
@@ -250,7 +301,7 @@ class Gate(BaseModel):
             size = max([t[0] for t in value]) + 1
             values_list: list[BIT] = [0 for _ in range(size)]
             for t in value:
-                values_list[t[0]] = t[1]
+                values_list[t[0]] = cast(BIT, t[1])
 
             formatted_outputs[key] = values_list
 
@@ -270,7 +321,7 @@ class Gate(BaseModel):
         return cls.model_validate(gate_dict)
 
     @classmethod
-    def discover(cls, base_dir: str | Path):
+    async def discover(cls, base_dir: str | Path):
         if isinstance(base_dir, str):
             base_dir = Path(base_dir)
 
@@ -290,23 +341,28 @@ class Gate(BaseModel):
             logging.info(f"discovered gate {gate.name}")
             gates.append(gate)
 
-        for gate in gates:
-            gate.build()
-
     @classmethod
-    def by_name(cls, name: str):
-        return cls.__available__[name]
+    async def by_name(cls, name: str):
+        template_gate = cls.__available__[name].model_copy(deep=True)
+        gate = await template_gate.build()
+        return await gate.post_build()
 
 
 class NotGate(Gate):
     def __init__(self):
         super().__init__(name="not", inputs=["i"], outputs=["o"], gates={}, wires={})
-        self.register()
 
-    async def get_output(self, **raw_inputs: BIT | list[BIT]):
-        inputs = self._check_inputs(raw_inputs)
+    async def build(self):
+        await super().build()
+        self._input_pins["i"].add_listener(self.listener)
 
-        return {"o": 1 - inputs["i"]}
+        return self
+
+    async def listener(self):
+        await self._output_pins["o"].set_value(1 - self._input_pins["i"].value)
+
+    def model_dump(self, *_, **__):
+        return {}
 
 
 NotGate().register()
@@ -317,12 +373,21 @@ class OrGate(Gate):
         super().__init__(
             name="or", inputs=["a", "b"], outputs=["o"], gates={}, wires={}
         )
-        self.register()
 
-    async def get_output(self, **raw_inputs: BIT | list[BIT]):
-        inputs = self._check_inputs(raw_inputs)
+    async def build(self):
+        await super().build()
+        self._input_pins["a"].add_listener(self.listener)
+        self._input_pins["b"].add_listener(self.listener)
 
-        return {"o": inputs["a"] | inputs["b"]}
+        return self
+
+    async def listener(self):
+        await self._output_pins["o"].set_value(
+            cast(BIT, self._input_pins["a"].value | self._input_pins["b"].value)
+        )
+
+    def model_dump(self, *_, **__):
+        return {}
 
 
 OrGate().register()
