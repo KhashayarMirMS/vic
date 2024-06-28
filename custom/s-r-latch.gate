@@ -11,7 +11,9 @@ gates:
 wires:
   r: nor1.a
   s: nor2.b
-  nor1.o: q
-  nor2.o: ~q
-  q: nor2.a
-  ~q: nor1.b
+  nor1.o:
+    - q
+    - nor2.a
+  nor2.o:
+    - nor1.b
+    - ~q
