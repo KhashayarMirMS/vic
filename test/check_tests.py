@@ -3,7 +3,10 @@ from pathlib import Path
 
 
 gate_list = list(
-    map(lambda p: Path(p).name.replace(".gate", ""), glob.glob("./custom/*.gate"))
+    map(
+        lambda p: Path(p).name.replace(".gate", "").replace("-", "_"),
+        glob.glob("./custom/*.gate"),
+    )
 ) + ["or", "not"]
 
 test_list = map(
@@ -14,5 +17,5 @@ test_list = map(
 diff = set(gate_list) - set(test_list)
 
 TAB = "  "
-print(f"{len(diff)} gates are missing tests:", end=f"\n{TAB}")
-print(f"\n{TAB}".join(diff))
+print(f"{len(diff)} gates are missing tests:", end=f"\n{TAB}- ")
+print(f"\n{TAB}- ".join(diff))
