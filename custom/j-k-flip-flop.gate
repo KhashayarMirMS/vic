@@ -1,0 +1,27 @@
+name: j-k-flip-flop
+inputs:
+  - j
+  - k
+  - clk
+outputs:
+  - q
+  - ~q
+gates:
+  sr: master-slave-s-r-flip-flop
+  and1: 3b-and
+  and2: 3b-and
+wires:
+  j: and1.b
+  k: and2.b
+  clk:
+    - and1.c
+    - and2.a
+    - sr.clk
+  and1.o: sr.s
+  and2.o: sr.r
+  sr.q:
+    - q
+    - and2.c
+  sr.~q:
+    - ~q
+    - and1.a
