@@ -1,5 +1,4 @@
 import asyncio
-from collections import defaultdict
 import glob
 import logging
 from pathlib import Path
@@ -66,6 +65,9 @@ class Wire:
         self._output_pin = output_pin
 
         self._input_pin.add_listener(self.listener)
+
+    async def initialize(self):
+        await self._output_pin.set_value(self._input_pin.value)
 
     async def listener(self):
         if self._output_pin.value == self._input_pin.value:
@@ -135,16 +137,9 @@ class Gate(BaseModel):
                 else:
                     end_pin = self.pins[end_pin_name]
 
-                self._wires.append(Wire(start_pin, end_pin))
-
-        return self
-
-    async def post_build(self):
-        # NOTE: using asyncio.gather can cause an infinite loop for gates like s-r-latch
-        for pin in self._input_pins.values():
-            await pin.set_value(1)
-        for pin in self._input_pins.values():
-            await pin.set_value(0)
+                wire = Wire(start_pin, end_pin)
+                await wire.initialize()
+                self._wires.append(wire)
 
         return self
 
@@ -251,20 +246,13 @@ class Gate(BaseModel):
         if len(extra_keys) > 0:
             raise Exception(f"unrecognized key(s): {', '.join(extra_keys)}")
 
-        uninitialized_pins = input_pins_set - input_keys_set
-
-        if len(uninitialized_pins) > 0:
-            logging.warning(
-                f"pin(s) <{', '.join(uninitialized_pins)}> are not initialized, defaulting to 0"
-            )
-
-        return defaultdict(lambda: 0, inputs)
+        return inputs
 
     async def get_output(self, **raw_inputs: BIT | list[BIT]):
         inputs = self._check_inputs(raw_inputs)
 
         await asyncio.gather(
-            *[self._input_pins[name].set_value(inputs[name]) for name in self.inputs]
+            *[self._input_pins[name].set_value(bit) for name, bit in inputs.items()]
         )
 
         return self.output_values
@@ -344,8 +332,7 @@ class Gate(BaseModel):
     @classmethod
     async def by_name(cls, name: str):
         template_gate = cls.__available__[name].model_copy(deep=True)
-        gate = await template_gate.build()
-        return await gate.post_build()
+        return await template_gate.build()
 
 
 class NotGate(Gate):
