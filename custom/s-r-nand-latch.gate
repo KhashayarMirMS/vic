@@ -1,0 +1,23 @@
+name: s-r-nand-latch
+inputs:
+  - s
+  - r
+outputs:
+  - q
+  - ~q
+gates:
+  snot: not
+  rnot: not
+  nand1: nand
+  nand2: nand
+wires:
+  s: snot.i
+  r: rnot.i
+  snot.o: nand1.a
+  rnot.o: nand2.b
+  nand1.o:
+    - q
+    - nand2.a
+  nand2.o:
+    - ~q
+    - nand1.b
