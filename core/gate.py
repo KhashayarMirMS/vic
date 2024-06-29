@@ -343,6 +343,9 @@ class NotGate(Gate):
         await super().build()
         self._input_pins["i"].add_listener(self.listener)
 
+        # manually initialize input-pin and the gate since there are no wires
+        await self._input_pins["i"].set_value(0)
+
         return self
 
     async def listener(self):
@@ -365,6 +368,10 @@ class OrGate(Gate):
         await super().build()
         self._input_pins["a"].add_listener(self.listener)
         self._input_pins["b"].add_listener(self.listener)
+
+        # manually initialize input-pin and the gate since there are no wires
+        await self._input_pins["a"].set_value(0)
+        await self._input_pins["b"].set_value(0)
 
         return self
 
