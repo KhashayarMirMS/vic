@@ -7,8 +7,8 @@ logging.basicConfig(level=logging.WARNING)
 
 async def main():
     await Gate.discover("./custom/")
-    a = await Gate.by_name("2x1-mux")
+    a = await Gate.by_name("8x1-mux")
 
-    print(await a.get_output(i=[1, 0], s=1))
+    print(await a.get_output(i=[1, 1, 0, 1, 1, 1, 1, 1], s=[0, 1, 0]))
 
 asyncio.run(main())
