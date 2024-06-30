@@ -11,7 +11,7 @@
 - [x] register
 - [x] adder
 - [ ] adder-subtractor
-- [ ] mux
+- [x] mux
 - [ ] demux
 - [ ] ram
 - [ ] disk
