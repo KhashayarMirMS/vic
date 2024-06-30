@@ -181,11 +181,11 @@ class Gate(BaseModel):
     def _parse_wires(
         cls, values: dict[str, str | list[str] | dict[str, str | list[str]]]
     ):
-        parsed_values: dict[str, str | list[str]] = {}
+        parsed_values: dict[str, list[str]] = {}
 
         for key, value in values.items():
             if isinstance(value, str):
-                parsed_values[key] = value
+                parsed_values[key] = [value]
                 continue
 
             if isinstance(value, list):
@@ -206,9 +206,7 @@ class Gate(BaseModel):
                 for inner_key, inner_value in value.items():
                     compiled_key = _compile_range_script(inner_key, context)
                     if isinstance(inner_value, str):
-                        compiled_value = _compile_range_script(inner_value, context)
-                        parsed_values[compiled_key] = compiled_value
-                        continue
+                        inner_value = [inner_value]
 
                     parsed_inner_values = []
                     for inner_value_item in inner_value:
@@ -217,9 +215,21 @@ class Gate(BaseModel):
                         )
                         parsed_inner_values.append(compiled_value)
 
+                    if compiled_key in parsed_values:
+                        parsed_values[compiled_key].extend(parsed_inner_values)
+                        continue
+
                     parsed_values[compiled_key] = parsed_inner_values
 
-        return parsed_values
+        result: dict[str, str | list[str]] = {}
+        for key, value in parsed_values.items():
+            if len(value) == 1:
+                result[key] = value
+                continue
+
+            result[key] = value
+
+        return result
 
     def _check_inputs(self, raw_inputs: dict[str, BIT | list[BIT]]) -> dict[str, BIT]:
         inputs = {}
