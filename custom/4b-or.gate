@@ -7,9 +7,8 @@ gates:
   ors[3]: or
 wires:
   i[0]: ors[0].a
-  i[1]: ors[0].b
-  ors[0].o: ors[1].a
-  i[2]: ors[1].b
-  ors[1].o: ors[2].a
-  i[3]: ors[2].b
+  (x=1..3):
+    i[#x]: ors[#(x - 1)].b
+  (x=0..1):
+    ors[#x].o: ors[#(x + 1)].a
   ors[2].o: o
