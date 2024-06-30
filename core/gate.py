@@ -96,8 +96,6 @@ class Gate(BaseModel):
     __available__: dict[str, "Gate"] = {}
 
     def __init__(self, /, **data):
-        if data["name"] == "32b-adder":
-            print(data)
         super().__init__(**data)
 
     def register(self):
@@ -107,8 +105,6 @@ class Gate(BaseModel):
         return self
 
     async def build(self):
-        # if self.name == '32b-full-adder':
-        #     print(self.gates.items())
         for gate_name, gate_type in self.gates.items():
             self._built_gates[gate_name] = await Gate.by_name(gate_type)
 
@@ -118,8 +114,6 @@ class Gate(BaseModel):
         for output_name in self.outputs:
             self._output_pins[output_name] = Pin()
 
-        # if self.name == '32b-full-adder':
-        #     print(self._built_gates.keys())
         for start_pin_name, end_pin_names in self.wires.items():
             if isinstance(end_pin_names, str):
                 end_pin_names = [end_pin_names]
