@@ -1,0 +1,21 @@
+name: 2x1-mux
+inputs:
+  - i[2]
+  - s
+outputs:
+  - y
+gates:
+  ands[2]: and
+  not: not
+  or: or
+wires:
+  or.o: y
+  (x=0..1):
+    i[#x]: ands[#(1 - x)].b
+  ands[0].o: or.a
+  ands[1].o: or.b
+  s:
+    - not.i
+    - ands[0].a
+  not.o: ands[1].a
+  
