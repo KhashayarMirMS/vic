@@ -1,64 +1,25 @@
 import asyncio
 import logging
-from core.gate import Gate
+from core.gate import BIT, Gate
 
 logging.basicConfig(level=logging.WARNING)
 
 
 async def main():
     await Gate.discover("./custom/")
-    a = await Gate.by_name("s-r-latch")
+    a = await Gate.by_name("32b-register")
 
-    print(a.output_values)
-    print("-" * 20)
-    print("-" * 20)
-    print(await a.get_output(s=1, r=0))
-    print('-' * 20)
-    print(await a.get_output(s=0, r=1))
-    print("-" * 20)
-    print(await a.get_output(s=0, r=0))
-    print("-" * 20)
-    print(await a.get_output(s=1, r=1))
-
-    print()
-
-    a = await Gate.by_name("s-r-nand-latch")
-
-    print(a.output_values)
-    print("-" * 20)
-    print("-" * 20)
-    print(await a.get_output(s=1, r=0))
-    print("-" * 20)
-    print(await a.get_output(s=0, r=1))
-    print("-" * 20)
-    print(await a.get_output(s=0, r=0))
-    print("-" * 20)
-    print(await a.get_output(s=1, r=1))
+    i: list[BIT] = [*(0 for _ in range(29)), 1, 0, 1]
+    print(a.readable_output_values)
     
-    print()
+    await a.get_output(e=0, i=i)
+    print(a.readable_output_values)
 
-    a = await Gate.by_name("j-k-flip-flop")
+    await a.get_output(e=1, i=i)
+    print(a.readable_output_values)
 
-    print(a.output_values)
-    print("-" * 20)
-    print("-" * 20)
-    print(await a.get_output(j=1, k=0, clk=0))
-    print(await a.get_output(j=1, k=0, clk=1))
-    print("-" * 20)
-    print(await a.get_output(j=0, k=1, clk=0))
-    print(await a.get_output(j=0, k=1, clk=1))
-    print("-" * 20)
-    print(await a.get_output(j=0, k=0, clk=0))
-    print(await a.get_output(j=0, k=0, clk=1))
-    print("-" * 20)
-    print(await a.get_output(j=1, k=1, clk=0))
-    print(await a.get_output(j=1, k=1, clk=1))
-    print()
-    print(await a.get_output(j=1, k=1, clk=0))
-    print(await a.get_output(j=1, k=1, clk=1))
-    print()
-    print(await a.get_output(j=1, k=1, clk=0))
-    print(await a.get_output(j=1, k=1, clk=1))
+    await a.get_output(e=0, i=[0 for _ in range(32)])
+    print(a.readable_output_values)
 
 
 asyncio.run(main())

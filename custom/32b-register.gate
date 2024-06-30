@@ -1,0 +1,13 @@
+name: 32b-register
+inputs:
+  - i[32]
+  - e
+outputs:
+  - o[32]
+gates:
+  latches[32]: d-latch
+wires:
+  (x=0..31):
+    i[#x]: latches[#x].d
+    e: latches[#x].e
+    latches[#x].q: o[#x]
