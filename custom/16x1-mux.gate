@@ -1,0 +1,21 @@
+name: 16x1-mux
+inputs:
+  - i[16]
+  - s[4]
+outputs:
+  - y
+gates:
+  8x1-muxes[2]: 8x1-mux
+  2x1-mux: 2x1-mux
+wires:
+  (x=0..7):
+    i[#x]: 8x1-muxes[0].i[#x]
+    i[#(x + 8)]: 8x1-muxes[1].i[#x]
+  (x=0..1):
+    8x1-muxes[#x].y: 2x1-mux.i[#x]
+  (x=0..2):
+    s[#x]:
+      - 8x1-muxes[0].s[#x]
+      - 8x1-muxes[1].s[#x]
+  s[3]: 2x1-mux.s
+  2x1-mux.y: y
