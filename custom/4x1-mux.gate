@@ -1,0 +1,29 @@
+name: 4x1-mux
+inputs:
+  - i[4]
+  - s[2]
+outputs:
+  - y
+gates:
+  nots[2]: not
+  ands[4]: 3b-and
+  or: 4b-or
+wires:
+  or.o: y
+  (x=0..3):
+    ands[#x].o: or.i[#x]
+    i[#x]: ands[#(3 - x)].c
+  s[0]:
+    - nots[0].i
+    - ands[0].b
+    - ands[2].b
+  s[1]:
+    - nots[1].i
+    - ands[0].a
+    - ands[1].a
+  nots[0].o:
+    - ands[1].b
+    - ands[3].b
+  nots[1].o:
+    - ands[2].a
+    - ands[3].a
