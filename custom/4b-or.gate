@@ -1,0 +1,15 @@
+name: 4b-or
+inputs:
+  - i[4]
+outputs:
+  - o
+gates:
+  ors[3]: or
+wires:
+  i[0]: ors[0].a
+  i[1]: ors[0].b
+  ors[0].o: ors[1].a
+  i[2]: ors[1].b
+  ors[1].o: ors[2].a
+  i[3]: ors[2].b
+  ors[2].o: o
