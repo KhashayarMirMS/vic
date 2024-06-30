@@ -6,11 +6,13 @@
 - [x] sr_latch
 - [x] gated_s_r_latch
 - [x] d_latch
-- [ ] sr_flip_flop
-- [ ] master_slave_s_r_flip_flop
-- [ ] master_slave_j_k_flip_flop
-- [ ] register
+- [x] master_slave_s_r_flip_flop
+- [x] master_slave_j_k_flip_flop
+- [x] register
 - [x] adder
+- [ ] adder-subtractor
+- [ ] mux
+- [ ] demux
 - [ ] ram
 - [ ] disk
 - [x] clock
