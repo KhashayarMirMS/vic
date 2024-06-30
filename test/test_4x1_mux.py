@@ -20,3 +20,9 @@ async def test_4x1_mux():
 
         output = await gate.get_output(i=i, s=s)
         assert output == {"y": 0}
+        
+        i: list[BIT] = [1 if y == x else 0 for y in range(4)]
+        s = to_bits(x)
+
+        output = await gate.get_output(i=i, s=s)
+        assert output == {"y": 1}
