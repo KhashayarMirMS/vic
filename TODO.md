@@ -10,7 +10,7 @@
 - [x] master_slave_j_k_flip_flop
 - [x] register
 - [x] adder
-- [ ] adder-subtractor
+- [x] adder-subtractor
 - [x] mux
 - [ ] demux
 - [ ] ram

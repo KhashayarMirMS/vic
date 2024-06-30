@@ -1,0 +1,20 @@
+name: 32b-full-adder-subtractor
+inputs:
+  - a[32]
+  - b[32]
+  - ci
+outputs:
+  - s[32]
+  - co
+gates:
+  adder: 32b-full-adder
+  xors[32]: xor
+wires:
+  ci: adder.ci
+  adder.co: co
+  (x=0..31):
+    a[#x]: adder.a[#x]
+    b[#x]: xors[#x].a
+    ci: xors[#x].b
+    xors[#x].o: adder.b[#x]
+    adder.s[#x]: s[#x]

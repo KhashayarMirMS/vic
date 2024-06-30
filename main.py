@@ -7,8 +7,11 @@ logging.basicConfig(level=logging.WARNING)
 
 async def main():
     await Gate.discover("./custom/")
-    a = await Gate.by_name("8x1-mux")
+    gate = await Gate.by_name("32b-full-adder-subtractor")
+    a: list[BIT] = [1, 0, 1, *(0 for _ in range(29))]
+    b: list[BIT] = [1, 0, 0, *(0 for _ in range(29))]
 
-    print(await a.get_output(i=[1, 1, 0, 1, 1, 1, 1, 1], s=[0, 1, 0]))
+    await gate.get_output(a=a, b=b, ci=1)
+    print(gate.readable_output_values)
 
 asyncio.run(main())
