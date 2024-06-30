@@ -1,16 +1,20 @@
 import asyncio
 import inspect
 from pathlib import Path
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, cast
 from pydantic import BaseModel
 import yaml
 
-CLOCK_CALLBACK = Callable[[], None | Awaitable[None]]
+from core.gate import BIT, Pin
+
+CLOCK_CALLBACK = Callable[[BIT], None | Awaitable[None]]
 
 
 class Clock(BaseModel):
-    speed: float = 0.01
+    tick_speed: float = 0.01
     max_ticks: int | None = None
+
+    _pin: Pin = Pin()
 
     @classmethod
     def from_file(cls, file_path: str | Path):
@@ -30,9 +34,12 @@ class Clock(BaseModel):
         tick = 0
 
         while tick < max_ticks:
-            await asyncio.sleep(self.speed)
-            
-            result = callback()
+            await asyncio.sleep(self.tick_speed)
+
+            new_value = cast(BIT, 1 - self._pin.value)
+            await self._pin.set_value(new_value)
+
+            result = callback(new_value)
             if inspect.isawaitable(result):
                 await result
 
